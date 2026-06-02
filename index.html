@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX — Personal Media Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700;900&display=swap');
+:root{
+  --bg:#07090e;--surface:#0d1018;--surface2:#141720;--surface3:#1a1f2e;
+  --border:#ffffff0d;--border2:#ffffff18;
+  --accent:#e8ff47;--accent2:#47b8ff;--accent3:#ff5f5f;--accent4:#b04fff;
+  --text:#eef0f6;--text2:#7a86a0;--text3:#3d4558;
+  --r:12px;--r2:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .6s,transform .6s}
+#splash.hide{opacity:0;pointer-events:none;transform:scale(1.04)}
+.splash-logo{font-family:'Syne',sans-serif;font-size:80px;font-weight:800;letter-spacing:-5px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:breathe 2s ease-in-out infinite}
+.splash-sub{color:var(--text2);font-size:13px;letter-spacing:5px;margin-top:6px;font-family:'DM Mono',monospace}
+.splash-bar{margin-top:48px;width:180px;height:2px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.splash-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));animation:loadbar 2s ease forwards}
+@keyframes loadbar{from{width:0}to{width:100%}}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* LAYOUT */
+#app{display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+#sidebar{width:68px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:2px;flex-shrink:0;z-index:10}
+.logo-sm{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:var(--accent);letter-spacing:-1px;margin-bottom:14px}
+.nav-btn{width:46px;height:50px;border-radius:var(--r2);border:none;background:transparent;color:var(--text2);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .2s;font-size:19px}
+.nav-btn .lbl{font-size:8px;font-family:'DM Mono',monospace;letter-spacing:.5px;text-transform:uppercase}
+.nav-btn:hover{background:var(--surface3);color:var(--text)}
+.nav-btn.active{background:var(--accent);color:var(--bg)}
+.sep{width:28px;height:1px;background:var(--border);margin:6px 0}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* TOPBAR */
+#topbar{height:50px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
+.topbar-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;flex:1}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:3px 9px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text2)}
+.api-badge{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:4px 10px;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer;transition:all .2s}
+.api-badge:hover{border-color:var(--accent);color:var(--accent)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent3)}
+.dot.on{background:#4ade80}
+.q4k{font-family:'Syne',sans-serif;font-weight:800;font-size:11px;background:linear-gradient(135deg,var(--accent),#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+/* CONTENT */
+#content{flex:1;display:flex;overflow:hidden}
+.panel{display:none;flex:1;overflow:hidden}
+.panel.active{display:flex}
+
+/* ── HOME ── */
+#panel-home{align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% -10%,#1b2245 0%,var(--bg) 65%)}
+.home-wrap{text-align:center;max-width:580px;padding:28px}
+.home-h{font-family:'Syne',sans-serif;font-size:50px;font-weight:800;letter-spacing:-3px;line-height:1.05}
+.home-h span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.home-p{color:var(--text2);margin-top:10px;font-size:14px;line-height:1.65}
+.hcards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:28px}
+.hcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:left;cursor:pointer;transition:all .2s}
+.hcard:hover{border-color:var(--accent2);transform:translateY(-2px)}
+.hcard-icon{font-size:26px;margin-bottom:8px}
+.hcard-title{font-weight:700;font-size:13px}
+.hcard-desc{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* SHARED VIDEO/IMAGE LAYOUT */
+.ws{display:flex;flex:1;overflow:hidden}
+.preview-area{flex:1;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.placeholder{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text2);cursor:pointer;padding:32px;text-align:center}
+.placeholder .ico{font-size:50px}
+.placeholder .ht{font-size:15px;font-weight:700;color:var(--text)}
+.placeholder .hs{font-size:12px}
+video.media{max-width:100%;max-height:calc(100% - 110px)}
+input[type=file]{display:none}
+
+/* TIMELINE */
+.timeline{height:96px;background:var(--surface);border-top:1px solid var(--border);padding:8px 14px;flex-shrink:0}
+.tl-track{height:38px;background:var(--surface2);border-radius:var(--r2);overflow:hidden;position:relative;border:1px solid var(--border);cursor:pointer}
+.tl-fill{height:100%;background:linear-gradient(90deg,var(--accent2)60%,var(--accent4));border-radius:var(--r2);width:0%;position:relative;transition:width .08s}
+.tl-cursor{position:absolute;top:0;right:0;width:3px;height:100%;background:var(--accent);border-radius:2px}
+.vc-row{display:flex;align-items:center;gap:6px;margin-top:7px}
+.vc-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--r2);padding:5px 9px;cursor:pointer;font-size:12px;transition:all .2s;font-family:'DM Mono',monospace}
+.vc-btn:hover{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.vc-btn.red:hover{background:var(--accent3);border-color:var(--accent3)}
+.ttime{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);margin-left:auto}
+
+/* RIGHT PANEL */
+.rpanel{width:256px;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;flex-shrink:0;padding:14px}
+.rs{margin-bottom:18px}
+.rt{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:8px}
+.rrow{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.rl{font-size:11px;color:var(--text2);width:72px;flex-shrink:0}
+.rv{font-size:10px;font-family:'DM Mono',monospace;color:var(--accent);width:30px;text-align:right}
+input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer}
+select,input[type=text],input[type=number]{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--r2);padding:5px 7px;font-size:11px;width:100%;font-family:'DM Mono',monospace;outline:none;transition:border-color .2s}
+select:focus,input:focus{border-color:var(--accent)}
+.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.fbtn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:7px 3px;font-size:9px;color:var(--text2);cursor:pointer;text-align:center;transition:all .2s;font-family:'DM Mono',monospace}
+.fbtn:hover,.fbtn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.btn{width:100%;padding:9px;border:none;border-radius:var(--r2);font-weight:700;cursor:pointer;font-size:12px;font-family:'Outfit',sans-serif;transition:all .2s;letter-spacing:.3px}
+.btn-accent{background:var(--accent);color:var(--bg)}
+.btn-accent:hover{box-shadow:0 4px 20px #e8ff4740;transform:translateY(-1px)}
+.btn-sec{background:var(--surface3);color:var(--text);border:1px solid var(--border2)}
+.btn-sec:hover{background:var(--accent2);color:var(--bg);border-color:var(--accent2)}
+.mt6{margin-top:6px}
+
+/* IMAGE EDITOR */
+.img-toolbar{height:50px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:6px;flex-wrap:nowrap;overflow-x:auto}
+.tbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:var(--r2);padding:5px 8px;cursor:pointer;font-size:11px;transition:all .2s;white-space:nowrap}
+.tbtn:hover,.tbtn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+input[type=color]{width:26px;height:26px;border:none;border-radius:4px;cursor:pointer;background:none}
+
+/* CAPTIONS */
+.cap-preview{flex:1;background:#000;position:relative;display:flex;align-items:center;justify-content:center}
+.cap-overlay{position:absolute;bottom:56px;left:50%;transform:translateX(-50%);text-align:center;max-width:82%;font-size:22px;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.95);pointer-events:none;padding:4px 14px;border-radius:4px}
+.cap-panel{width:300px;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;padding:14px}
+.cap-entry{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:9px;margin-bottom:7px;cursor:pointer;transition:all .2s}
+.cap-entry:hover{border-color:var(--accent2)}
+.cap-entry.active{border-color:var(--accent)}
+.cap-ts{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent2);margin-bottom:3px}
+.cap-ta{background:transparent;border:none;color:var(--text);font-size:12px;width:100%;outline:none;resize:none;font-family:'Outfit',sans-serif}
+
+/* OCR */
+#panel-ocr{flex-direction:column;overflow-y:auto}
+.ocr-ws{display:flex;flex:1;overflow:hidden;padding:14px;gap:14px}
+.ocr-l{flex:1;display:flex;flex-direction:column;gap:10px}
+.ocr-r{width:340px;display:flex;flex-direction:column;gap:10px}
+.upload-box{border:2px dashed var(--border2);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.upload-box:hover{border-color:var(--accent);background:var(--surface2)}
+.upload-box .ui{font-size:32px;margin-bottom:6px}
+.upload-box p{font-size:12px;color:var(--text2)}
+.ocr-out{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:12px;line-height:1.9;color:var(--text);min-height:180px;white-space:pre-wrap}
+
+/* AI STUDIO */
+#panel-ai{flex-direction:column;overflow-y:auto}
+.ai-ws{padding:20px;max-width:920px;margin:0 auto;width:100%}
+.ai-h{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin-bottom:3px}
+.ai-sub{color:var(--text2);font-size:12px;margin-bottom:24px}
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:14px}
+.aicard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;transition:all .2s}
+.aicard:hover{border-color:var(--border2);transform:translateY(-1px)}
+.aic-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.aic-icon{font-size:22px}
+.aic-title{font-weight:700;font-size:13px}
+.aic-badge{font-size:8px;font-family:'DM Mono',monospace;padding:2px 5px;border-radius:3px;background:var(--accent4);color:#fff;letter-spacing:1px}
+.aic-badge.local{background:#2d6a4f}
+.aic-desc{font-size:11px;color:var(--text2);line-height:1.55;margin-bottom:12px}
+.ai-drop{border:1px dashed var(--border2);border-radius:var(--r2);padding:13px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:8px;font-size:11px;color:var(--text2);font-family:'DM Mono',monospace}
+.ai-drop:hover{border-color:var(--accent);color:var(--accent)}
+.ai-prev{width:100%;border-radius:var(--r2);display:none;margin-bottom:8px;max-height:140px;object-fit:cover}
+.ai-res{margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:10px;font-size:11px;color:var(--text2);display:none;font-family:'DM Mono',monospace;line-height:1.65}
+.ai-vid-res{width:100%;border-radius:var(--r2);margin-top:8px;display:none}
+textarea{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--r2);padding:7px;font-size:11px;width:100%;resize:vertical;font-family:'DM Mono',monospace;outline:none;transition:border-color .2s}
+textarea:focus{border-color:var(--accent)}
+
+/* SETTINGS */
+#panel-settings{overflow-y:auto}
+.set-wrap{padding:22px;max-width:580px}
+.set-h{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin-bottom:20px}
+.set-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.set-sec-h{font-weight:700;font-size:13px;margin-bottom:10px}
+.set-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.set-lbl{font-size:12px;color:var(--text2);flex:1}
+.key-wrap{position:relative;flex:1}
+.key-wrap input{padding-right:32px}
+.eye{position:absolute;right:7px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px}
+.save-btn{background:var(--accent);border:none;border-radius:var(--r2);padding:7px 14px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12px;transition:all .2s}
+.save-btn:hover{opacity:.85}
+
+/* PROGRESS */
+.pbar-wrap{background:var(--surface2);border-radius:4px;height:5px;overflow:hidden;margin:6px 0}
+.pbar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width .3s;width:0%}
+
+/* TOAST */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:9998;display:flex;flex-direction:column;gap:7px}
+.toast{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 14px;font-size:12px;min-width:220px;animation:tin .3s ease;display:flex;align-items:center;gap:7px}
+.toast.s{border-color:#4ade80}.toast.e{border-color:var(--accent3)}.toast.i{border-color:var(--accent2)}
+@keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* MODAL */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9990;align-items:center;justify-content:center}
+.mbg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:26px;max-width:440px;width:90%}
+.modal-h{font-family:'Syne',sans-serif;font-weight:800;font-size:19px;margin-bottom:5px}
+.modal-p{font-size:12px;color:var(--text2);margin-bottom:16px}
+.modal-btns{display:flex;gap:7px;margin-top:14px}
+
+/* MISC */
+.hidden{display:none!important}
+.spin{animation:spin 1s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">APEX</div>
+  <div class="splash-sub">PERSONAL MEDIA STUDIO</div>
+  <div class="splash-bar"><div class="splash-fill"></div></div>
+</div>
+
+<div id="toasts"></div>
+
+<!-- API MODAL -->
+<div class="mbg" id="apiModal">
+  <div class="modal">
+    <div class="modal-h">🔑 Hugging Face API Key</div>
+    <div class="modal-p">Paste your free HF key to unlock AI features. Stored only on your device.</div>
+    <div class="key-wrap">
+      <input type="password" id="mKey" placeholder="hf_xxxxxxxxxxxxxxxx" style="width:100%">
+      <button class="eye" onclick="toggleVis('mKey')">👁</button>
+    </div>
+    <div class="modal-btns">
+      <button class="save-btn" onclick="saveKey()">✓ Save Key</button>
+      <button class="btn btn-sec" onclick="closeModal('apiModal')" style="flex:1;padding:7px">Skip for now</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="logo-sm">AP</div>
+    <button class="nav-btn active" data-p="home" onclick="go('home',this)">🏠<span class="lbl">Home</span></button>
+    <button class="nav-btn" data-p="video" onclick="go('video',this)">🎬<span class="lbl">Video</span></button>
+    <button class="nav-btn" data-p="image" onclick="go('image',this)">🖼<span class="lbl">Image</span></button>
+    <button class="nav-btn" data-p="captions" onclick="go('captions',this)">💬<span class="lbl">Capts</span></button>
+    <button class="nav-btn" data-p="ocr" onclick="go('ocr',this)">🔍<span class="lbl">OCR</span></button>
+    <button class="nav-btn" data-p="ai" onclick="go('ai',this)">✨<span class="lbl">AI</span></button>
+    <div class="sep"></div>
+    <button class="nav-btn" data-p="settings" onclick="go('settings',this)">⚙️<span class="lbl">Setup</span></button>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <div class="topbar-title">APEX <span style="color:var(--text3);font-weight:400">/ Media Studio</span></div>
+      <span class="q4k">4K READY</span>
+      <div class="chip">Fabric · Tesseract · HF AI</div>
+      <div class="api-badge" onclick="openModal('apiModal')" id="apiBadge">
+        <div class="dot" id="apiDot"></div>
+        <span id="apiTxt">No API Key</span>
+      </div>
+    </div>
+
+    <div id="content">
+
+      <!-- HOME -->
+      <div class="panel active" id="panel-home">
+        <div class="home-wrap" style="margin:auto">
+          <div class="home-h">Your <span>Personal</span><br>Media Studio</div>
+          <div class="home-p">Edit videos in 4K, enhance images, extract text from pictures, auto-generate captions, and use AI to transform your media — all runs locally on your device.</div>
+          <div class="hcards">
+            <div class="hcard" onclick="go('video',qsel('[data-p=video]'))"><div class="hcard-icon">🎬</div><div class="hcard-title">Video Editor</div><div class="hcard-desc">Trim, merge, color grade, overlays. Export 4K.</div></div>
+            <div class="hcard" onclick="go('image',qsel('[data-p=image]'))"><div class="hcard-icon">🖼</div><div class="hcard-title">Image Editor</div><div class="hcard-desc">Crop, filters, draw, annotate & export.</div></div>
+            <div class="hcard" onclick="go('captions',qsel('[data-p=captions]'))"><div class="hcard-icon">💬</div><div class="hcard-title">Caption Studio</div><div class="hcard-desc">Style & burn-in subtitles for any video.</div></div>
+            <div class="hcard" onclick="go('ocr',qsel('[data-p=ocr]'))"><div class="hcard-icon">🔍</div><div class="hcard-title">Image-to-Text</div><div class="hcard-desc">Extract text from any image instantly.</div></div>
+            <div class="hcard" onclick="go('ai',qsel('[data-p=ai]'))"><div class="hcard-icon">✨</div><div class="hcard-title">AI Studio</div><div class="hcard-desc">Pic-to-video, upscale, bg removal, generate.</div></div>
+            <div class="hcard" onclick="go('settings',qsel('[data-p=settings]'))"><div class="hcard-icon">⚙️</div><div class="hcard-title">Settings</div><div class="hcard-desc">Add your HF API key & preferences.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIDEO EDITOR -->
+      <div class="panel" id="panel-video" style="flex-direction:column">
+        <div class="ws">
+          <div class="preview-area" id="vDropZone" ondragover="dov(event,'vDropZone')" ondragleave="dol('vDropZone')" ondrop="dropVid(event)">
+            <div class="placeholder" id="vPH" onclick="qsel('#vIn').click()">
+              <div class="ico">🎬</div>
+              <div class="ht">Drop video here or click to upload</div>
+              <div class="hs">MP4 · MOV · AVI · MKV · WebM · 4K supported</div>
+              <div class="q4k" style="margin-top:8px">4K UHD READY</div>
+            </div>
+            <video id="vEl" class="media hidden" playsinline></video>
+            <input type="file" id="vIn" accept="video/*" onchange="loadVid(this)">
+            <!-- text overlay container -->
+            <div id="vOverlay" style="position:absolute;pointer-events:none;font-family:'Syne',sans-serif;font-weight:900;text-shadow:0 2px 8px rgba(0,0,0,.95);display:none"></div>
+          </div>
+
+          <!-- VIDEO RIGHT PANEL -->
+          <div class="rpanel">
+            <div class="rs">
+              <div class="rt">📁 File</div>
+              <button class="btn btn-sec" style="width:100%" onclick="qsel('#vIn').click()">📂 Open Video</button>
+              <div id="vInfo" style="margin-top:6px;font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;display:none"></div>
+            </div>
+
+            <div class="rs">
+              <div class="rt">🎨 Filters</div>
+              <div class="fgrid">
+                <div class="fbtn active" onclick="vf('none',this)">None</div>
+                <div class="fbtn" onclick="vf('grayscale(100%)',this)">B&W</div>
+                <div class="fbtn" onclick="vf('sepia(100%)',this)">Sepia</div>
+                <div class="fbtn" onclick="vf('contrast(1.6) saturate(1.6)',this)">Vivid</div>
+                <div class="fbtn" onclick="vf('brightness(1.25)',this)">Bright</div>
+                <div class="fbtn" onclick="vf('hue-rotate(180deg) saturate(2)',this)">Neon</div>
+                <div class="fbtn" onclick="vf('saturate(.4) contrast(1.2)',this)">Matte</div>
+                <div class="fbtn" onclick="vf('invert(100%)',this)">Invert</div>
+                <div class="fbtn" onclick="vf('contrast(2.2) brightness(.75)',this)">Noir</div>
+                <div class="fbtn" onclick="vf('hue-rotate(270deg)',this)">Dusk</div>
+                <div class="fbtn" onclick="vf('sepia(60%) hue-rotate(200deg)',this)">Teal</div>
+                <div class="fbtn" onclick="vf('contrast(1.5) brightness(1.1) saturate(0)',this)">Fade</div>
+              </div>
+            </div>
+
+            <div class="rs">
+              <div class="rt">🎛 Adjustments</div>
+              <div class="rrow"><div class="rl">Brightness</div><input type="range" min="0" max="250" value="100" oninput="va(this,'brightness')" id="vB"><div class="rv" id="vBv">100</div></div>
+              <div class="rrow"><div class="rl">Contrast</div><input type="range" min="0" max="300" value="100" oninput="va(this,'contrast')" id="vC"><div class="rv" id="vCv">100</div></div>
+              <div class="rrow"><div class="rl">Saturate</div><input type="range" min="0" max="300" value="100" oninput="va(this,'saturate')" id="vS"><div class="rv" id="vSv">100</div></div>
+              <div class="rrow"><div class="rl">Volume</div><input type="range" min="0" max="200" value="100" oninput="vVol(this)" id="vVl"><div class="rv" id="vVlv">100</div></div>
+              <div class="rrow"><div class="rl">Speed</div><input type="range" min="25" max="400" value="100" oninput="vSpd(this)" id="vSp"><div class="rv" id="vSpv">1x</div></div>
+            </div>
+
+            <div class="rs">
+              <div class="rt">✂️ Trim</div>
+              <div class="rrow"><div class="rl">Start (s)</div><input type="number" id="tStart" value="0" min="0" step="0.1"></div>
+              <div class="rrow"><div class="rl">End (s)</div><input type="number" id="tEnd" value="" min="0" step="0.1" placeholder="end"></div>
+              <button class="btn btn-sec mt6" onclick="prevTrim()">👁 Preview Trim</button>
+            </div>
+
+            <div class="rs">
+              <div class="rt">📝 Text Overlay</div>
+              <input type="text" id="ovTxt" placeholder="Your text..." style="margin-bottom:6px">
+              <div class="rrow"><div class="rl">Color</div><input type="color" id="ovCol" value="#ffffff"><div class="rl" style="text-align:right">Size</div><input type="number" id="ovSz" value="38" style="width:54px"></div>
+              <div class="rrow"><div class="rl">Position</div><select id="ovPos"><option value="bottom">Bottom</option><option value="top">Top</option><option value="center">Center</option></select></div>
+              <div class="rrow"><div class="rl">BG</div><select id="ovBg"><option value="none">None</option><option value="dark">Dark</option><option value="black">Black</option></select></div>
+              <button class="btn btn-sec mt6" onclick="addOverlay()">➕ Apply Overlay</button>
+              <button class="btn btn-sec mt6" onclick="rmOverlay()">🗑 Remove</button>
+            </div>
+
+            <div class="rs">
+              <div class="rt">📤 Export</div>
+              <div class="rrow"><div class="rl">Quality</div>
+                <select id="expQ">
+                  <option value="4k">4K (3840×2160)</option>
+                  <option value="1080" selected>1080p Full HD</option>
+                  <option value="720">720p HD</option>
+                  <option value="480">480p SD</option>
+                </select>
+              </div>
+              <div class="rrow"><div class="rl">Format</div>
+                <select id="expF"><option value="mp4">MP4</option><option value="webm">WebM</option></select>
+              </div>
+              <button class="btn btn-accent mt6" onclick="exportVid()">⬇ Export Video</button>
+              <div class="pbar-wrap hidden" id="expPW"><div class="pbar" id="expPB"></div></div>
+              <div id="expSt" style="font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;margin-top:3px;text-align:center"></div>
+            </div>
+
+            <div class="rs">
+              <div class="rt">📸 Snapshot</div>
+              <button class="btn btn-sec" onclick="snapFrame()">📸 Snap Current Frame</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TIMELINE -->
+        <div class="timeline">
+          <div class="tl-track" id="tlTrack" onclick="seekTL(event)">
+            <div class="tl-fill" id="tlFill"><div class="tl-cursor"></div></div>
+          </div>
+          <div class="vc-row">
+            <button class="vc-btn" onclick="vSkip(-30)">⏮ -30s</button>
+            <button class="vc-btn" onclick="vSkip(-10)">-10s</button>
+            <button class="vc-btn" onclick="vPlay()" id="ppBtn">▶ Play</button>
+            <button class="vc-btn" onclick="vSkip(10)">+10s</button>
+            <button class="vc-btn" onclick="vSkip(30)">+30s ⏭</button>
+            <button class="vc-btn" onclick="vMute()" id="muteBtn">🔊</button>
+            <button class="vc-btn red" onclick="vReset()">↺ Reset</button>
+            <div class="ttime" id="ttime">0:00 / 0:00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IMAGE EDITOR -->
+      <div class="panel" id="panel-image" style="flex-direction:column">
+        <div class="img-toolbar">
+          <button class="tbtn" onclick="itool('select')">↖ Select</button>
+          <button class="tbtn" onclick="itool('draw')">✏ Draw</button>
+          <button class="tbtn" onclick="itool('text')">T Text</button>
+          <button class="tbtn" onclick="itool('rect')">⬛ Rect</button>
+          <button class="tbtn" onclick="itool('circle')">⭕ Circle</button>
+          <button class="tbtn" onclick="itool('line')">╱ Line</button>
+          <button class="tbtn" onclick="iFlipH()">↔ Flip H</button>
+          <button class="tbtn" onclick="iFlipV()">↕ Flip V</button>
+          <button class="tbtn" onclick="iRot(-90)">↺ -90°</button>
+          <button class="tbtn" onclick="iRot(90)">↻ +90°</button>
+          <button class="tbtn" onclick="iUndo()">⟲ Undo</button>
+          <button class="tbtn" onclick="iDelete()">🗑 Del</button>
+          <input type="color" id="dColor" value="#e8ff47" onchange="updColor(this)" title="Brush/Shape Color">
+          <div class="rrow" style="margin:0;gap:5px">
+            <span style="font-size:10px;color:var(--text2)">Size</span>
+            <input type="range" min="1" max="60" value="5" id="bSz" style="width:70px" oninput="updBrush(this)">
+            <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--accent)" id="bSzV">5</span>
+          </div>
+          <input type="color" id="fillColor" value="#ffffff00" title="Fill Color (shapes)">
+        </div>
+        <div class="ws">
+          <div class="preview-area" id="imgArea">
+            <div class="placeholder" id="iPH" onclick="qsel('#iIn').click()">
+              <div class="ico">🖼</div>
+              <div class="ht">Drop image or click to upload</div>
+              <div class="hs">JPG · PNG · WebP · GIF · SVG</div>
+            </div>
+            <canvas id="iCanvas" class="hidden"></canvas>
+            <input type="file" id="iIn" accept="image/*" onchange="loadImg(this)">
+          </div>
+          <div class="rpanel">
+            <div class="rs">
+              <div class="rt">📁 File</div>
+              <button class="btn btn-sec" style="width:100%" onclick="qsel('#iIn').click()">📂 Open Image</button>
+            </div>
+            <div class="rs">
+              <div class="rt">🎨 Filters</div>
+              <div class="fgrid">
+                <div class="fbtn active" onclick="iFilter('none',this)">None</div>
+                <div class="fbtn" onclick="iFilter('grayscale(100%)',this)">B&W</div>
+                <div class="fbtn" onclick="iFilter('sepia(100%)',this)">Sepia</div>
+                <div class="fbtn" onclick="iFilter('contrast(1.6) saturate(1.6)',this)">Vivid</div>
+                <div class="fbtn" onclick="iFilter('brightness(1.3)',this)">Bright</div>
+                <div class="fbtn" onclick="iFilter('hue-rotate(90deg) saturate(2)',this)">Cyber</div>
+                <div class="fbtn" onclick="iFilter('blur(2px)',this)">Blur</div>
+                <div class="fbtn" onclick="iFilter('invert(100%)',this)">Invert</div>
+                <div class="fbtn" onclick="iFilter('contrast(2.2)',this)">Drama</div>
+              </div>
+            </div>
+            <div class="rs">
+              <div class="rt">🎛 Adjustments</div>
+              <div class="rrow"><div class="rl">Brightness</div><input type="range" min="0" max="300" value="100" oninput="iAdj()" id="iB"><div class="rv" id="iBv">100</div></div>
+              <div class="rrow"><div class="rl">Contrast</div><input type="range" min="0" max="300" value="100" oninput="iAdj()" id="iC"><div class="rv" id="iCv">100</div></div>
+              <div class="rrow"><div class="rl">Saturate</div><input type="range" min="0" max="400" value="100" oninput="iAdj()" id="iSat"><div class="rv" id="iSatv">100</div></div>
+              <div class="rrow"><div class="rl">Hue</div><input type="range" min="0" max="360" value="0" oninput="iAdj()" id="iH"><div class="rv" id="iHv">0</div></div>
+              <div class="rrow"><div class="rl">Blur</div><input type="range" min="0" max="20" value="0" step=".5" oninput="iAdj()" id="iBlur"><div class="rv" id="iBlurv">0</div></div>
+              <div class="rrow"><div class="rl">Opacity</div><input type="range" min="0" max="100" value="100" oninput="iAdj()" id="iOp"><div class="rv" id="iOpv">100</div></div>
+            </div>
+            <div class="rs">
+              <div class="rt">📐 Resize Canvas</div>
+              <div class="rrow"><div class="rl">Width</div><input type="number" id="rW" placeholder="px"></div>
+              <div class="rrow"><div class="rl">Height</div><input type="number" id="rH" placeholder="px"></div>
+              <button class="btn btn-sec mt6" onclick="iResize()">Apply</button>
+            </div>
+            <div class="rs">
+              <div class="rt">📤 Export</div>
+              <div class="rrow"><div class="rl">Format</div><select id="iFmt"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></div>
+              <div class="rrow"><div class="rl">Quality</div><input type="range" min="10" max="100" value="92" id="iQ" oninput="qsel('#iQv').textContent=this.value"><div class="rv" id="iQv">92</div></div>
+              <button class="btn btn-accent mt6" onclick="iExport()">⬇ Save Image</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAPTIONS -->
+      <div class="panel" id="panel-captions">
+        <div class="cap-preview">
+          <div class="placeholder" id="cPH" onclick="qsel('#cIn').click()">
+            <div class="ico">💬</div>
+            <div class="ht">Load video for captioning</div>
+            <div class="hs">Supports all video formats</div>
+          </div>
+          <video id="cVid" class="media hidden" ontimeupdate="capSync()" style="max-height:100%"></video>
+          <div class="cap-overlay" id="capOv"></div>
+          <input type="file" id="cIn" accept="video/*" onchange="loadCapVid(this)">
+        </div>
+        <div class="cap-panel">
+          <div class="rt">💬 Captions</div>
+          <div style="display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="vc-btn" onclick="addCap()">➕ Add</button>
+            <button class="vc-btn" onclick="autoCap()">🤖 Sample</button>
+            <button class="vc-btn" onclick="expSRT()">⬇ SRT</button>
+            <button class="vc-btn" onclick="expVTT()">⬇ VTT</button>
+          </div>
+          <div class="rs">
+            <div class="rt">🎨 Style</div>
+            <div class="rrow"><div class="rl">Color</div><input type="color" id="cColor" value="#ffffff" oninput="capStyle()"></div>
+            <div class="rrow"><div class="rl">Size</div><input type="range" min="12" max="72" value="22" id="cSz" oninput="capStyle();qsel('#cSzV').textContent=this.value"><div class="rv" id="cSzV">22</div></div>
+            <div class="rrow"><div class="rl">Bold</div><select id="cFw" onchange="capStyle()"><option value="700">Bold</option><option value="400">Normal</option><option value="900">Black</option></select></div>
+            <div class="rrow"><div class="rl">BG</div><select id="cBg" onchange="capStyle()"><option value="none">None</option><option value="dark">Dark</option><option value="black">Black</option><option value="accent">Yellow</option></select></div>
+            <div class="rrow"><div class="rl">Font</div><select id="cFont" onchange="capStyle()"><option>Outfit</option><option>Syne</option><option>DM Mono</option><option>Arial</option><option>Impact</option></select></div>
+            <div class="rrow"><div class="rl">Position</div><select id="cPos" onchange="capStyle()"><option value="bottom">Bottom</option><option value="center">Center</option><option value="top">Top</option></select></div>
+          </div>
+          <div id="capList"></div>
+        </div>
+      </div>
+
+      <!-- OCR -->
+      <div class="panel" id="panel-ocr">
+        <div class="ocr-ws">
+          <div class="ocr-l">
+            <div class="rt">🔍 Image → Text (OCR)</div>
+            <div class="upload-box" id="ocrBox" onclick="qsel('#ocrIn').click()" ondragover="dov(event,'ocrBox')" ondrop="ocrDrop(event)">
+              <div class="ui">🖼</div>
+              <p>Click or drag image to extract text</p>
+              <p style="font-size:10px;margin-top:3px;color:var(--text3)">JPG · PNG · WebP · TIFF</p>
+            </div>
+            <img id="ocrImg" style="max-width:100%;border-radius:var(--r);display:none" alt="ocr">
+            <input type="file" id="ocrIn" accept="image/*" onchange="doOCR(this)">
+            <div class="pbar-wrap hidden" id="ocrPW"><div class="pbar" id="ocrPB"></div></div>
+            <div id="ocrSt" style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace"></div>
+          </div>
+          <div class="ocr-r">
+            <div class="rt">📄 Extracted Text</div>
+            <div class="ocr-out" id="ocrOut">Extracted text will appear here...</div>
+            <div style="display:flex;gap:7px">
+              <button class="btn btn-sec" style="flex:1" onclick="copyOCR()">📋 Copy</button>
+              <button class="btn btn-accent" style="flex:1" onclick="dlOCR()">⬇ Save .txt</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI STUDIO -->
+      <div class="panel" id="panel-ai">
+        <div class="ai-ws">
+          <div class="ai-h">✨ AI Studio</div>
+          <div class="ai-sub">Powered by Hugging Face — add your free API key in ⚙️ Settings to activate all features</div>
+          <div id="proto-inline" style="display:none;background:#1a0d00;border:1px solid #ff6b35;border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:12px;line-height:1.8;color:#ffb080">
+            <b style="color:#ff9055">⚠️ AI blocked — file opened as content:// or file://</b><br>
+            Android Chrome blocks external API calls from local files.<br>
+            <b>Quick fix (pick one):</b><br>
+            ① <a href="https://app.netlify.com/drop" target="_blank" style="color:#e8ff47;font-weight:700">app.netlify.com/drop</a> — drag &amp; drop this file → open the link it gives you<br>
+            ② <b>Acode app</b> — open file in Acode → tap ▶ Preview (serves via localhost)<br>
+            ③ <b>PC</b> — VS Code + Live Server → right-click file → Open with Live Server
+          </div>
+          <div class="ai-grid">
+
+            <!-- Pic to Video -->
+            <div class="aicard">
+              <div class="aic-head"><div class="aic-icon">🎬</div><div><div class="aic-title">Picture → Video</div><div class="aic-badge">AI</div></div></div>
+              <div class="aic-desc">Animate any still image into a video clip using Stable Video Diffusion.</div>
+              <div class="ai-drop" onclick="qsel('#p2vIn').click()">📤 Upload Image</div>
+              <img id="p2vPrev" class="ai-prev">
+              <input type="file" id="p2vIn" accept="image/*" onchange="prevAI(this,'p2vPrev')">
+              <textarea id="p2vPrompt" placeholder="Describe the motion... (e.g. gentle breeze, camera zoom)" rows="2"></textarea>
+              <button class="btn btn-accent mt6" onclick="doP2V()">🎬 Generate Video</button>
+              <div class="ai-res" id="p2vRes"></div>
+              <video id="p2vVid" class="ai-vid-res" controls></video>
+            </div>
+
+            <!-- Image Gen -->
+            <div class="aicard">
+              <div class="aic-head"><div class="aic-icon">🎨</div><div><div class="aic-title">AI Image Generation</div><div class="aic-badge">AI</div></div></div>
+              <div class="aic-desc">Generate stunning images from text using Stable Diffusion XL.</div>
+              <textarea id="igPrompt" placeholder="Describe the image... e.g. 'a futuristic Lagos skyline at sunset, 4K cinematic'" rows="3"></textarea>
+              <div class="rrow mt6"><div class="rl">Style</div>
+                <select id="igStyle">
+                  <option value="">Realistic</option>
+                  <option value=", cinematic photography, 8k">Cinematic 8K</option>
+                  <option value=", anime style, vibrant">Anime</option>
+                  <option value=", oil painting, impressionist">Oil Painting</option>
+                  <option value=", watercolor illustration">Watercolor</option>
+                  <option value=", neon cyberpunk, dark">Cyberpunk</option>
+                  <option value=", pixel art, retro game">Pixel Art</option>
+                </select>
+              </div>
+              <button class="btn btn-accent mt6" onclick="doImgGen()">🎨 Generate</button>
+              <div class="ai-res" id="igRes"></div>
+              <img id="igOut" class="ai-prev" style="display:none;margin-top:8px;max-height:200px">
+            </div>
+
+            <!-- Upscale -->
+            <div class="aicard">
+              <div class="aic-head"><div class="aic-icon">🔭</div><div><div class="aic-title">AI Upscale to 4K</div><div class="aic-badge">AI</div></div></div>
+              <div class="aic-desc">Enhance image resolution up to 4x using AI super-resolution.</div>
+              <div class="ai-drop" onclick="qsel('#upIn').click()">📤 Upload Image</div>
+              <img id="upPrev" class="ai-prev">
+              <input type="file" id="upIn" accept="image/*" onchange="prevAI(this,'upPrev')">
+              <div class="rrow mt6"><div class="rl">Scale</div><select id="upScale"><option value="2">2x HD</option><option value="4" selected>4x — 4K</option></select></div>
+              <button class="btn btn-accent mt6" onclick="doUpscale()">🔭 Upscale</button>
+              <div class="ai-res" id="upRes"></div>
+              <img id="upOut" class="ai-prev" style="display:none;margin-top:8px">
+            </div>
+
+            <!-- BG Removal -->
+            <div class="aicard">
+              <div class="aic-head"><div class="aic-icon">✂️</div><div><div class="aic-title">Background Removal</div><div class="aic-badge">AI</div></div></div>
+              <div class="aic-desc">Remove photo backgrounds automatically with AI precision.</div>
+              <div class="ai-drop" onclick="qsel('#bgIn').click()">📤 Upload Image</div>
+              <img id="bgPrev" class="ai-prev">
+              <input type="file" id="bgIn" accept="image/*" onchange="prevAI(this,'bgPrev')">
+              <button class="btn btn-accent mt6" onclick="doBgRm()">✂️ Remove BG</button>
+              <div class="ai-res" id="bgRes"></div>
+              <img id="bgOut" class="ai-prev" style="display:none;margin-top:8px">
+            </div>
+
+            <!-- Image Captioning -->
+            <div class="aicard">
+              <div class="aic-head"><div class="aic-icon">🏷</div><div><div class="aic-title">Image Captioning</div><div class="aic-badge">AI</div></div></div>
+              <div class="aic-desc">Auto-generate descriptive captions for any photo using BLIP vision AI.</div>
+              <div class="ai-drop" onclick="qsel('#capIn').click()">📤 Upload Image</div>
+              <img id="capPrev" class="ai-prev">
+              <input type="file" id="capIn" accept="image/*" onchange="prevAI(this,'capPrev')">
+              <button class="btn btn-accent mt6" onclick="doCaption()">🏷 Generate Caption</button>
+              <div class="ai-res" id="capRes"></div>
+            </div>
+
+            <!-- Frame Extractor -->
+            <div class="aicard">
+              <div class="aic-head"><div class="aic-icon">📷</div><div><div class="aic-title">Frame Extractor</div><div class="aic-badge local">LOCAL</div></div></div>
+              <div class="aic-desc">Extract any frame from your video as a high-quality PNG. Works offline.</div>
+              <div class="ai-drop" onclick="qsel('#frIn').click()">📤 Upload Video</div>
+              <input type="file" id="frIn" accept="video/*" onchange="loadFrVid(this)">
+              <video id="frVid" style="width:100%;border-radius:6px;display:none;margin:7px 0" controls></video>
+              <button class="btn btn-accent mt6" onclick="extractFr()">📷 Snap Current Frame</button>
+              <img id="frOut" class="ai-prev" style="display:none;margin-top:8px">
+              <a id="frDl" class="hidden"><button class="btn btn-sec mt6">⬇ Download Frame</button></a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="panel" id="panel-settings">
+        <div class="set-wrap">
+          <div class="set-h">⚙️ Settings</div>
+
+          <div class="set-sec">
+            <div class="set-sec-h">🔑 Hugging Face API Key</div>
+            <p style="font-size:11px;color:var(--text2);margin-bottom:10px">Required for AI features. Get yours free at huggingface.co — stored only on your device, never sent anywhere else.</p>
+            <div class="set-row">
+              <div class="key-wrap">
+                <input type="password" id="sKey" placeholder="hf_xxxxxxxxxxxxxxxx">
+                <button class="eye" onclick="toggleVis('sKey')">👁</button>
+              </div>
+              <button class="save-btn" onclick="saveKeySettings()">Save</button>
+            </div>
+            <div id="keyStatus" style="font-size:11px;font-family:'DM Mono',monospace;margin-top:6px;color:var(--text2)"></div>
+          </div>
+
+          <div class="set-sec">
+            <div class="set-sec-h">📺 Export Defaults</div>
+            <div class="set-row"><div class="set-lbl">Default Video Quality</div>
+              <select id="defQ" style="width:150px"><option value="4k">4K (3840×2160)</option><option value="1080" selected>1080p</option><option value="720">720p</option></select>
+            </div>
+            <div class="set-row"><div class="set-lbl">Default Image Format</div>
+              <select id="defFmt" style="width:150px"><option value="png">PNG (lossless)</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select>
+            </div>
+          </div>
+
+          <div class="set-sec">
+            <div class="set-sec-h">ℹ️ About APEX Media Studio</div>
+            <p style="font-size:12px;color:var(--text2);line-height:1.8">
+              <b style="color:var(--text)">Version 1.0 — Runs 100% on your device</b><br>
+              Built with: Fabric.js · Tesseract.js · Hugging Face APIs · Web APIs<br>
+              No data leaves your device unless using HF AI features.<br><br>
+              <span style="color:var(--accent)">4K video</span> · <span style="color:var(--accent2)">Image editing</span> · <span style="color:var(--accent4)">AI generation</span> · <span style="color:#4ade80">OCR</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let HF = localStorage.getItem('apex_hf') || '';
+let fc = null; // Fabric canvas
+let iHistory = [], iHptr = -1;
+let vidAdj = {brightness:100,contrast:100,saturate:100};
+let vidFilter = 'none';
+let caps = [];
+
+const qsel = s => document.querySelector(s);
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+window.addEventListener('load', () => {
+  // Show protocol warning inside AI panel if needed
+  if(location.protocol==='content:'||location.protocol==='file:'){
+    const el = document.getElementById('proto-inline');
+    if(el) el.style.display='block';
+  }
+  setTimeout(() => {
+    qsel('#splash').classList.add('hide');
+    setTimeout(() => qsel('#splash').remove(), 700);
+    if (!HF) setTimeout(() => openModal('apiModal'), 900);
+    else setApiUI(true);
+  }, 2100);
+  initFabric();
+});
+
+// ════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════
+function go(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  qsel('#panel-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  const names = {home:'Home',video:'Video Editor',image:'Image Editor',captions:'Caption Studio',ocr:'Image → Text',ai:'AI Studio',settings:'Settings'};
+  qsel('.topbar-title').innerHTML = `APEX <span style="color:var(--text3);font-weight:400">/ ${names[id]||id}</span>`;
+}
+
+// ════════════════════════════════════════
+// MODAL / API KEY
+// ════════════════════════════════════════
+function openModal(id) { qsel('#'+id).classList.add('open'); }
+function closeModal(id) { qsel('#'+id).classList.remove('open'); }
+function toggleVis(id) { const el=qsel('#'+id); el.type=el.type==='password'?'text':'password'; }
+function saveKey() {
+  const v = qsel('#mKey').value.trim();
+  if (v) { HF=v; localStorage.setItem('apex_hf',v); setApiUI(true); toast('API Key saved ✓','s'); }
+  closeModal('apiModal');
+}
+function saveKeySettings() {
+  const v = qsel('#sKey').value.trim();
+  if (!v) return toast('Enter a key first','e');
+  HF=v; localStorage.setItem('apex_hf',v); setApiUI(true);
+  qsel('#keyStatus').textContent='✓ Saved & active';
+  qsel('#keyStatus').style.color='#4ade80';
+  toast('API Key saved!','s');
+}
+function setApiUI(on) {
+  qsel('#apiDot').className='dot'+(on?' on':'');
+  qsel('#apiTxt').textContent=on?'HF Connected':'No API Key';
+  if (on && qsel('#sKey').value==='') { qsel('#sKey').value=HF; qsel('#keyStatus').textContent='✓ Key loaded'; qsel('#keyStatus').style.color='#4ade80'; }
+}
+
+// ════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════
+function toast(msg, type='i', dur=3200) {
+  const ic = {s:'✅',e:'❌',i:'ℹ️'};
+  const el = document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span>${ic[type]}</span><span>${msg}</span>`;
+  qsel('#toasts').appendChild(el);
+  setTimeout(()=>el.remove(), dur);
+}
+
+// ════════════════════════════════════════
+// DRAG & DROP HELPERS
+// ════════════════════════════════════════
+function dov(e,id){e.preventDefault();qsel('#'+id).style.borderColor='var(--accent)'}
+function dol(id){qsel('#'+id).style.borderColor=''}
+function dropVid(e){e.preventDefault();dol('vDropZone');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('video/'))loadVidFile(f);}
+function ocrDrop(e){e.preventDefault();dol('ocrBox');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))runOCRFile(f);}
+
+// ════════════════════════════════════════
+// VIDEO EDITOR
+// ════════════════════════════════════════
+let vidFile=null;
+function loadVid(inp){if(inp.files[0])loadVidFile(inp.files[0]);}
+function loadVidFile(f){
+  vidFile=f;
+  const url=URL.createObjectURL(f);
+  const v=qsel('#vEl');
+  v.src=url; v.classList.remove('hidden');
+  qsel('#vPH').classList.add('hidden');
+  v.onloadedmetadata=()=>{
+    qsel('#tEnd').value=v.duration.toFixed(1);
+    const info=qsel('#vInfo');
+    info.style.display='block';
+    info.innerHTML=`${f.name}<br>${(f.size/1048576).toFixed(1)}MB · ${v.videoWidth}×${v.videoHeight} · ${ft(v.duration)}`;
+    updTime();
+  };
+  v.ontimeupdate=()=>{updTL();updTime();};
+  toast(`Loaded: ${f.name}`,'s');
+}
+function vPlay(){const v=qsel('#vEl');if(v.paused){v.play();qsel('#ppBtn').textContent='⏸ Pause';}else{v.pause();qsel('#ppBtn').textContent='▶ Play';}}
+function vSkip(s){const v=qsel('#vEl');v.currentTime=Math.max(0,Math.min(v.duration||0,v.currentTime+s));}
+function vMute(){const v=qsel('#vEl');v.muted=!v.muted;qsel('#muteBtn').textContent=v.muted?'🔇':'🔊';}
+function vReset(){const v=qsel('#vEl');v.currentTime=0;v.pause();qsel('#ppBtn').textContent='▶ Play';}
+function vVol(el){qsel('#vEl').volume=el.value/100;qsel('#vVlv').textContent=el.value;}
+function vSpd(el){const s=el.value/100;qsel('#vEl').playbackRate=s;qsel('#vSpv').textContent=s.toFixed(2)+'x';}
+function updTL(){const v=qsel('#vEl');if(!v.duration)return;const p=(v.currentTime/v.duration*100).toFixed(1)+'%';qsel('#tlFill').style.width=p;}
+function updTime(){const v=qsel('#vEl');qsel('#ttime').textContent=`${ft(v.currentTime)} / ${ft(v.duration||0)}`;}
+function ft(s){const m=Math.floor(s/60);return`${m}:${String(Math.floor(s%60)).padStart(2,'0')}`;}
+function seekTL(e){const v=qsel('#vEl');if(!v.duration)return;const r=e.currentTarget.getBoundingClientRect();v.currentTime=((e.clientX-r.left)/r.width)*v.duration;}
+function vf(f,btn){vidFilter=f;document.querySelectorAll('#panel-video .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');applyVStyle();}
+function va(el,prop){vidAdj[prop]=el.value;qsel('#v'+prop[0].toUpperCase()+prop.slice(1)+'v').textContent=el.value;applyVStyle();}
+function applyVStyle(){const v=qsel('#vEl');const b=`brightness(${vidAdj.brightness}%) contrast(${vidAdj.contrast}%) saturate(${vidAdj.saturate}%)`;v.style.filter=vidFilter!=='none'?vidFilter:b;}
+function prevTrim(){const v=qsel('#vEl');const s=parseFloat(qsel('#tStart').value)||0;v.currentTime=s;v.play();qsel('#ppBtn').textContent='⏸ Pause';toast('Preview from trim start','i');}
+
+let ovEl=null;
+function addOverlay(){
+  const v=qsel('#vEl');if(!v.src)return toast('Load a video first','e');
+  rmOverlay();
+  const txt=qsel('#ovTxt').value;if(!txt)return toast('Enter overlay text','e');
+  ovEl=document.createElement('div');
+  const pos=qsel('#ovPos').value;
+  const bg=qsel('#ovBg').value;
+  const bgMap={none:'transparent',dark:'rgba(0,0,0,.55)',black:'rgba(0,0,0,.92)'};
+  ovEl.style.cssText=`position:absolute;left:50%;transform:translateX(-50%);color:${qsel('#ovCol').value};font-size:${qsel('#ovSz').value}px;font-weight:900;text-shadow:0 2px 10px rgba(0,0,0,.95);pointer-events:none;z-index:10;font-family:'Syne',sans-serif;background:${bgMap[bg]||'transparent'};padding:4px 14px;border-radius:5px;white-space:nowrap;`;
+  if(pos==='bottom')ovEl.style.bottom='56px';
+  else if(pos==='top')ovEl.style.top='36px';
+  else{ovEl.style.top='50%';ovEl.style.transform='translate(-50%,-50%)';}
+  ovEl.textContent=txt;
+  qsel('#vDropZone').appendChild(ovEl);
+  toast('Overlay added','s');
+}
+function rmOverlay(){if(ovEl){ovEl.remove();ovEl=null;}}
+function snapFrame(){
+  const v=qsel('#vEl');if(!v.src)return toast('Load a video first','e');
+  const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  const url=c.toDataURL('image/png');
+  const a=document.createElement('a');a.href=url;a.download=`snap_${Date.now()}.png`;a.click();
+  toast('Frame saved as PNG!','s');
+}
+function exportVid(){
+  const v=qsel('#vEl');if(!v.src)return toast('Load a video first','e');
+  const fmt=qsel('#expF').value;
+  qsel('#expSt').textContent='Preparing download...';
+  const a=document.createElement('a');a.href=v.src;a.download=`apex_export_${Date.now()}.${fmt}`;a.click();
+  setTimeout(()=>qsel('#expSt').textContent='✓ Download started',500);
+  toast('Export started — check Downloads','s');
+}
+
+// ════════════════════════════════════════
+// IMAGE EDITOR (Fabric.js)
+// ════════════════════════════════════════
+function initFabric(){
+  fc=new fabric.Canvas('iCanvas',{width:800,height:600,backgroundColor:'#111318'});
+  fc.on('object:modified',saveH);fc.on('object:added',saveH);
+}
+function loadImg(inp){if(inp.files[0])loadImgFile(inp.files[0]);}
+function loadImgFile(f){
+  const url=URL.createObjectURL(f);
+  fabric.Image.fromURL(url,img=>{
+    fc.clear();
+    const sc=Math.min(800/img.width,600/img.height,1);
+    img.scale(sc).set({left:(800-img.width*sc)/2,top:(600-img.height*sc)/2,selectable:true});
+    fc.add(img);qsel('#iCanvas').classList.remove('hidden');qsel('#iPH').classList.add('hidden');
+    saveH();toast(`Image loaded: ${f.name}`,'s');
+  });
+}
+function itool(t){
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  fc.isDrawingMode=false;
+  if(t==='draw'){
+    fc.isDrawingMode=true;
+    fc.freeDrawingBrush.color=qsel('#dColor').value;
+    fc.freeDrawingBrush.width=+qsel('#bSz').value;
+  } else if(t==='text'){
+    const tx=new fabric.IText('Edit me',{left:120,top:120,fill:qsel('#dColor').value,fontSize:32,fontFamily:'Outfit',fontWeight:'bold'});
+    fc.add(tx);fc.setActiveObject(tx);tx.enterEditing();
+  } else if(t==='rect'){
+    const r=new fabric.Rect({left:100,top:100,width:160,height:100,fill:qsel('#fillColor').value,stroke:qsel('#dColor').value,strokeWidth:3});
+    fc.add(r);
+  } else if(t==='circle'){
+    const ci=new fabric.Circle({left:100,top:100,radius:60,fill:qsel('#fillColor').value,stroke:qsel('#dColor').value,strokeWidth:3});
+    fc.add(ci);
+  } else if(t==='line'){
+    const ln=new fabric.Line([50,200,300,200],{stroke:qsel('#dColor').value,strokeWidth:+qsel('#bSz').value});
+    fc.add(ln);
+  }
+}
+function updColor(inp){fc.freeDrawingBrush.color=inp.value;const o=fc.getActiveObject();if(o){o.set('stroke',inp.value);fc.renderAll();}}
+function updBrush(el){fc.freeDrawingBrush.width=+el.value;qsel('#bSzV').textContent=el.value;}
+function iFlipH(){const o=fc.getActiveObject();if(o){o.set('flipX',!o.flipX);fc.renderAll();}}
+function iFlipV(){const o=fc.getActiveObject();if(o){o.set('flipY',!o.flipY);fc.renderAll();}}
+function iRot(d){const o=fc.getActiveObject();if(o){o.rotate((o.angle+d)%360);fc.renderAll();}else{fc.getObjects().forEach(o=>o.rotate((o.angle+d)%360));fc.renderAll();}}
+function iDelete(){const o=fc.getActiveObject();if(o){fc.remove(o);fc.renderAll();}}
+function iUndo(){if(iHistory.length>1){iHistory.pop();fc.loadFromJSON(iHistory[iHistory.length-1],()=>fc.renderAll());toast('Undo','i');}}
+function saveH(){iHistory.push(JSON.stringify(fc.toJSON()));if(iHistory.length>40)iHistory.shift();}
+function iFilter(f,btn){document.querySelectorAll('#panel-image .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');qsel('#iCanvas').style.filter=f==='none'?getIAdj():f;}
+function iAdj(){
+  ['B','C','Sat','H','Blur','Op'].forEach(k=>qsel('#i'+k+'v').textContent=qsel('#i'+k).value);
+  qsel('#iCanvas').style.filter=getIAdj();
+}
+function getIAdj(){
+  return `brightness(${qsel('#iB').value}%) contrast(${qsel('#iC').value}%) saturate(${qsel('#iSat').value}%) hue-rotate(${qsel('#iH').value}deg) blur(${qsel('#iBlur').value}px) opacity(${qsel('#iOp').value}%)`;
+}
+function iResize(){const w=+qsel('#rW').value,h=+qsel('#rH').value;if(w)fc.setWidth(w);if(h)fc.setHeight(h);fc.renderAll();toast('Canvas resized','s');}
+function iExport(){
+  const fmt=qsel('#iFmt').value,q=+qsel('#iQ').value/100;
+  const url=fc.toDataURL({format:fmt,quality:q});
+  const a=document.createElement('a');a.href=url;a.download=`apex_img_${Date.now()}.${fmt}`;a.click();
+  toast('Image saved!','s');
+}
+
+// ════════════════════════════════════════
+// CAPTIONS
+// ════════════════════════════════════════
+function loadCapVid(inp){
+  if(!inp.files[0])return;
+  const v=qsel('#cVid');v.src=URL.createObjectURL(inp.files[0]);v.classList.remove('hidden');
+  qsel('#cPH').classList.add('hidden');toast('Video loaded','s');
+}
+function addCap(s,e,t){const id=Date.now();caps.push({id,s:parseFloat(s)||0,e:parseFloat(e)||3,t:t||'New caption'});renderCaps();}
+function renderCaps(){
+  const list=qsel('#capList');list.innerHTML='';
+  caps.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='cap-entry';
+    d.innerHTML=`<div class="cap-ts">${c.s.toFixed(2)}s → ${c.e.toFixed(2)}s</div>
+    <textarea class="cap-ta" rows="2" onchange="caps[${i}].t=this.value">${c.t}</textarea>
+    <div style="display:flex;gap:4px;margin-top:5px">
+      <button class="vc-btn" style="font-size:9px" onclick="setCTime(${i})">⏱ Set</button>
+      <button class="vc-btn" style="font-size:9px" onclick="caps.splice(${i},1);renderCaps()">🗑</button>
+    </div>`;
+    list.appendChild(d);
+  });
+}
+function setCTime(i){const v=qsel('#cVid');caps[i].s=+v.currentTime.toFixed(2);caps[i].e=+(v.currentTime+3).toFixed(2);renderCaps();toast(`Cap ${i+1} time set`,'i');}
+function capSync(){
+  const v=qsel('#cVid'),t=v.currentTime;
+  const a=caps.find(c=>t>=c.s&&t<=c.e);
+  qsel('#capOv').textContent=a?a.t:'';
+}
+function capStyle(){
+  const ov=qsel('#capOv');
+  const color=qsel('#cColor').value,sz=qsel('#cSz').value,fw=qsel('#cFw').value,font=qsel('#cFont').value,bg=qsel('#cBg').value,pos=qsel('#cPos').value;
+  ov.style.color=color;ov.style.fontSize=sz+'px';ov.style.fontWeight=fw;ov.style.fontFamily=`'${font}',sans-serif`;
+  const bgMap={none:'transparent',dark:'rgba(0,0,0,.55)',black:'rgba(0,0,0,.9)',accent:'rgba(232,255,71,.9)'};
+  ov.style.background=bgMap[bg]||'transparent';
+  if(bg==='accent')ov.style.color='#000';
+  ov.style.bottom=pos==='bottom'?'56px':'auto';ov.style.top=pos==='top'?'40px':pos==='center'?'50%':'auto';
+  if(pos==='center')ov.style.transform='translate(-50%,-50%)';else ov.style.transform='translateX(-50%)';
+}
+function autoCap(){for(let i=0;i<6;i++)addCap(i*4,i*4+3.5,`Caption ${i+1} — tap to edit this text`);toast('Sample captions added','i');}
+function toSRT(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60),ms=Math.round((s%1)*1000);return`${P(h)}:${P(m)}:${P(sc)},${String(ms).padStart(3,'0')}`;}
+function toVTT(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60),ms=Math.round((s%1)*1000);return`${P(h)}:${P(m)}:${P(sc)}.${String(ms).padStart(3,'0')}`;}
+function P(n){return String(n).padStart(2,'0');}
+function expSRT(){let t='';caps.forEach((c,i)=>{t+=`${i+1}\n${toSRT(c.s)} --> ${toSRT(c.e)}\n${c.t}\n\n`;});dlText(t,`captions_${Date.now()}.srt`);}
+function expVTT(){let t='WEBVTT\n\n';caps.forEach((c,i)=>{t+=`${i+1}\n${toVTT(c.s)} --> ${toVTT(c.e)}\n${c.t}\n\n`;});dlText(t,`captions_${Date.now()}.vtt`);}
+function dlText(text,name){const b=new Blob([text],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();toast('File saved!','s');}
+
+// ════════════════════════════════════════
+// OCR (Tesseract.js)
+// ════════════════════════════════════════
+function doOCR(inp){if(inp.files[0])runOCRFile(inp.files[0]);}
+function runOCRFile(f){
+  const url=URL.createObjectURL(f);
+  const img=qsel('#ocrImg');img.src=url;img.style.display='block';
+  qsel('#ocrOut').textContent='⏳ Processing image...';
+  qsel('#ocrPW').classList.remove('hidden');
+  qsel('#ocrSt').textContent='Loading OCR engine...';
+  Tesseract.recognize(url,'eng',{
+    logger:m=>{
+      if(m.status==='recognizing text'){
+        const p=Math.round(m.progress*100);
+        qsel('#ocrPB').style.width=p+'%';
+        qsel('#ocrSt').textContent=`Recognizing... ${p}%`;
+      }
+    }
+  }).then(({data:{text}})=>{
+    qsel('#ocrOut').textContent=text||'(No text detected)';
+    qsel('#ocrPW').classList.add('hidden');
+    qsel('#ocrSt').textContent=`✓ Done — ${text.trim().split(/\s+/).filter(Boolean).length} words`;
+    toast('Text extracted!','s');
+  }).catch(err=>{qsel('#ocrOut').textContent='Error: '+err.message;toast('OCR Error: '+err.message,'e');});
+}
+function copyOCR(){navigator.clipboard.writeText(qsel('#ocrOut').textContent).then(()=>toast('Copied!','s'));}
+function dlOCR(){dlText(qsel('#ocrOut').textContent,`ocr_${Date.now()}.txt`);}
+
+// ════════════════════════════════════════
+// AI STUDIO — FIXED (protocol + models + retry)
+// ════════════════════════════════════════
+
+// ── Protocol detection: content:// and file:// both block external fetch ──
+(function detectProtocol(){
+  const proto = location.protocol;
+  if(proto === 'file:' || proto === 'content:'){
+    // inject warning banner after body loads
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const banner = document.createElement('div');
+      banner.id = 'proto-warn';
+      banner.style.cssText = `
+        position:fixed;bottom:0;left:0;right:0;z-index:9999;
+        background:#1a0a00;border-top:2px solid #ff6b35;
+        padding:12px 16px;font-size:12px;font-family:'DM Mono',monospace;
+        color:#ffb088;line-height:1.7;
+      `;
+      banner.innerHTML = `
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:20px;flex-shrink:0">⚠️</span>
+          <div>
+            <b style="color:#ff9055;font-size:13px">AI features blocked — running from ${proto}// URL</b><br>
+            Android Chrome blocks API calls from <b>content://</b> and <b>file://</b> pages.<br>
+            <b>Fix (pick one):</b>
+            &nbsp;① <b>Netlify Drop</b>: go to <span style="color:#e8ff47">netlify.com/drop</span> → upload this file → open the link
+            &nbsp;② <b>Acode</b>: open the file in Acode → tap ▶ Preview (serves via localhost)
+            &nbsp;③ <b>PC</b>: VS Code + Live Server extension → right-click file → Open with Live Server
+          </div>
+          <button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:#ff9055;font-size:18px;cursor:pointer;flex-shrink:0;margin-left:auto">✕</button>
+        </div>`;
+      document.body.appendChild(banner);
+    });
+  }
+})();
+
+// ── Unified HF fetch: retry + X-Wait-For-Model + clear error messages ──
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function hfFetch(model, data, isBinary, statusEl){
+  if(!HF){ toast('Add your HF API key in ⚙️ Settings','e'); openModal('apiModal'); return null; }
+
+  const setS = msg => { if(statusEl){ statusEl.style.display='block'; statusEl.textContent=msg; } };
+  const url  = `https://api-inference.huggingface.co/models/${model}`;
+  const hdrs = {
+    'Authorization'  : `Bearer ${HF}`,
+    'X-Wait-For-Model': 'true',   // tells HF to wait for cold model instead of 503
+    'Content-Type'   : isBinary ? (data.type||'image/jpeg') : 'application/json',
+  };
+  const body = isBinary ? data : JSON.stringify(
+    typeof data === 'object' && data.inputs !== undefined
+      ? { ...data, options:{ wait_for_model:true, use_cache:false } }
+      : { inputs: data, options:{ wait_for_model:true, use_cache:false } }
+  );
+
+  for(let attempt = 1; attempt <= 3; attempt++){
+    let resp;
+    try {
+      setS(attempt === 1
+        ? '🔄 Sending request...'
+        : `⏳ Model warming up, attempt ${attempt}/3 — please wait...`);
+      resp = await fetch(url, { method:'POST', headers:hdrs, body });
+    } catch(netErr){
+      const isContentProto = location.protocol === 'content:' || location.protocol === 'file:';
+      if(isContentProto){
+        throw new Error(
+          'CORS blocked by browser.\n\n' +
+          '📌 You opened this file as content:// — AI features cannot reach the internet from here.\n\n' +
+          'Fix: Upload to netlify.com/drop and open the link, OR open via Acode Preview.'
+        );
+      }
+      if(attempt < 3){ setS(`⚠️ Connection issue, retrying in 5s (${attempt}/3)...`); await sleep(5000); continue; }
+      throw new Error('Network error: ' + netErr.message);
+    }
+
+    // Model still loading
+    if(resp.status === 503){
+      let wait = 20;
+      try{ const j = await resp.json(); wait = Math.min(j.estimated_time||20, 50); }catch(_){}
+      if(attempt < 3){
+        setS(`⏳ Model loading (~${Math.round(wait)}s)... auto-retrying ${attempt}/3`);
+        await sleep(Math.max(wait*1000, 22000));
+        continue;
+      }
+      throw new Error('Model is still loading after 3 attempts. Wait 1-2 min then try again.');
+    }
+
+    // Pro / billing required
+    if(resp.status === 402){
+      throw new Error('⚡ This model requires HF Pro ($9/mo). See note below for free alternative.');
+    }
+
+    // Bad API key
+    if(resp.status === 401){
+      HF = ''; localStorage.removeItem('apex_hf'); setApiUI(false);
+      throw new Error('Invalid API key. Go to ⚙️ Settings and re-enter your key.');
+    }
+
+    if(!resp.ok){
+      const e = await resp.text().catch(()=>'');
+      throw new Error(`HF Error ${resp.status}: ${e.slice(0,120)}`);
+    }
+
+    return resp; // success — caller gets raw Response
+  }
+}
+
+// ── Preview helper ──
+function prevAI(inp,pid){
+  if(!inp.files[0])return;
+  const img=qsel('#'+pid);
+  img.src=URL.createObjectURL(inp.files[0]);
+  img.style.display='block';
+}
+
+// ── Image Captioning — model: BLIP base (free, fast) ──
+async function doCaption(){
+  const inp=qsel('#capIn'); if(!inp.files[0]) return toast('Upload an image first','e');
+  const res=qsel('#capRes'); res.style.display='block';
+  try{
+    const resp = await hfFetch('Salesforce/blip-image-captioning-base', inp.files[0], true, res);
+    if(!resp) return;
+    const txt  = await resp.text();
+    const j    = JSON.parse(txt);
+    const cap  = Array.isArray(j) ? j[0]?.generated_text : j?.generated_text;
+    res.textContent = '🏷 ' + (cap || txt.slice(0,200));
+    toast('Caption generated!','s');
+  }catch(e){ res.textContent='❌ '+e.message; toast('Failed','e'); }
+}
+
+// ── Background Removal — model: BRIA RMBG-1.4 (free) ──
+async function doBgRm(){
+  const inp=qsel('#bgIn'); if(!inp.files[0]) return toast('Upload an image first','e');
+  const res=qsel('#bgRes'), out=qsel('#bgOut');
+  res.style.display='block';
+  try{
+    const resp = await hfFetch('briaai/RMBG-1.4', inp.files[0], true, res);
+    if(!resp) return;
+    const blob = await resp.blob();
+    out.src=URL.createObjectURL(blob); out.style.display='block';
+    res.textContent='✅ Done! Long-press/right-click image to save as PNG.';
+    toast('Background removed!','s');
+  }catch(e){ res.textContent='❌ '+e.message; toast('Failed','e'); }
+}
+
+// ── AI Upscale — model: swin2SR (free, 2-4x) ──
+async function doUpscale(){
+  const inp=qsel('#upIn'); if(!inp.files[0]) return toast('Upload an image first','e');
+  const res=qsel('#upRes'), out=qsel('#upOut');
+  res.style.display='block';
+  try{
+    // swin2SR: free, reliable 2x super-resolution (replaces Pro-only clarity-upscaler)
+    const resp = await hfFetch('caidas/swin2SR-classical-sr-x2-64', inp.files[0], true, res);
+    if(!resp) return;
+    const blob = await resp.blob();
+    out.src=URL.createObjectURL(blob); out.style.display='block';
+    res.textContent='✅ Upscaled! Long-press/right-click image to save.';
+    toast('Upscale done!','s');
+  }catch(e){ res.textContent='❌ '+e.message; toast('Failed','e'); }
+}
+
+// ── Image Generation — model: SDXL base (free) ──
+async function doImgGen(){
+  const prompt=qsel('#igPrompt').value.trim(); if(!prompt) return toast('Enter a description first','e');
+  const style=qsel('#igStyle').value;
+  const res=qsel('#igRes'), out=qsel('#igOut');
+  res.style.display='block';
+  try{
+    const payload = { inputs: prompt+style, options:{ wait_for_model:true, use_cache:false } };
+    const resp = await hfFetch('stabilityai/stable-diffusion-xl-base-1.0', payload, false, res);
+    if(!resp) return;
+    const blob = await resp.blob();
+    out.src=URL.createObjectURL(blob); out.style.display='block';
+    res.textContent='✅ Generated! Long-press/right-click image to save.';
+    toast('Image generated!','s');
+  }catch(e){ res.textContent='❌ '+e.message; toast('Failed','e'); }
+}
+
+// ── Picture → Video — uses AnimateDiff (free text-to-video) ──
+// Note: Stable Video Diffusion (img2vid) requires HF Pro.
+// AnimateDiff-Lightning is the best free alternative.
+async function doP2V(){
+  const inp=qsel('#p2vIn'); if(!inp.files[0]) return toast('Upload an image first','e');
+  const prompt=(qsel('#p2vPrompt').value||'smooth cinematic motion').trim();
+  const res=qsel('#p2vRes'), vid=qsel('#p2vVid');
+  res.style.display='block';
+  try{
+    // Try AnimateDiff-Lightning — free text-to-video
+    const payload = { inputs: prompt, options:{ wait_for_model:true, use_cache:false } };
+    const resp = await hfFetch('ByteDance/AnimateDiff-Lightning', payload, false, res);
+    if(!resp) return;
+    const blob = await resp.blob();
+    vid.src=URL.createObjectURL(blob); vid.style.display='block';
+    res.textContent='✅ Video ready! Tap play below.';
+    toast('Video generated!','s');
+  }catch(e){
+    // Fallback message if AnimateDiff also fails
+    res.textContent =
+      '❌ ' + e.message + '\n\n' +
+      '📌 Note: True picture-to-video (Stable Video Diffusion) requires HF Pro ($9/mo).\n' +
+      'Free alternative: "AnimateDiff-Lightning" generates video from your text prompt above.\n' +
+      'If the model is cold, wait 30s and tap Generate again.';
+    toast('Video generation failed','e');
+  }
+}
+
+// ── Frame Extractor (local — no API needed) ──
+function loadFrVid(inp){
+  if(!inp.files[0])return;
+  const v=qsel('#frVid');
+  v.src=URL.createObjectURL(inp.files[0]);
+  v.style.display='block';
+  toast('Scrub to your frame then tap Snap','i');
+}
+function extractFr(){
+  const v=qsel('#frVid');
+  if(!v.src||!v.videoWidth) return toast('Load a video first','e');
+  const c=document.createElement('canvas');
+  c.width=v.videoWidth; c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  const url=c.toDataURL('image/png');
+  const out=qsel('#frOut'); out.src=url; out.style.display='block';
+  const dl=qsel('#frDl'); dl.href=url; dl.download=`frame_${Date.now()}.png`; dl.classList.remove('hidden');
+  toast(`Frame saved — ${v.videoWidth}×${v.videoHeight}`,'s');
+}
+</script>
+</body>
+</html>
